@@ -1,16 +1,16 @@
 #! /usr/bin/env python
-### TODO: Add logging
 try:
+    import logging
+    import logging.handlers
     import os
+
     from QALib.derived_images import *
     from QALib.derived_images import __slicer_module__
-    print __slicer_module__
+
     from __main__ import ctk
     from __main__ import qt
     from __main__ import slicer
     from __main__ import vtk
-#     import logging
-#     import logging.handlers
 except ImportError:
     print "External modules not found!"
 #     raise ImportError
@@ -27,9 +27,14 @@ class DerivedImageQA:
 
 
 class DerivedImageQAWidget:
-    def __init__(self, parent=None, test=False):
-        self.images = ('t2_average', 't1_average') # T1 is second so that reviewers see it as background for regions
-        self.regions = ('labels_tissue',
+    def __init__(self, parent=None, test=True):
+        logFile = os.path.join(os.environ['TMPDIR'], "DerivedImageQAWidget" + '.log')
+        logging.basicConfig(filename=logFile,
+                            level=logging.DEBUG,
+                            format='%(module)s.%(funcName)s - %(levelname)s: %(message)s')
+        self.logging = logging.getLogger(__name__)
+        self.images = ('t1_average',) # T1 is second so that reviewers see it as background for regions
+        self.regions = (
                         'caudate_left', 'caudate_right',
                         'accumben_left', 'accumben_right',
                         'putamen_left', 'putamen_right',
@@ -42,7 +47,8 @@ class DerivedImageQAWidget:
         self.followUpDialog = None
         self.notes = None
         # Handle the UI display with/without Slicer
-        if parent is None and not test:
+        ### HACK
+        if parent is None: ###and not test:
             self.parent = slicer.qMRMLWidget()
             self.parent.setLayout(qt.QVBoxLayout())
             self.parent.setMRMLScene(slicer.mrmlScene)
@@ -50,14 +56,16 @@ class DerivedImageQAWidget:
             self.logic = DerivedImageQALogic(self)
             self.setup()
             self.parent.show()
-        elif not test:
+        else: ###elif not test:
             self.parent = parent
             self.layout = self.parent.layout()
             self.logic = DerivedImageQALogic(self, test=test)
-        elif test:
-            self.logic = DerivedImageQALogic(self, test=test)
+        ###elif test:
+        ###    self.logic = DerivedImageQALogic(self, test=test)
+        ### END HACK
 
     def setup(self):
+        self.logging.debug("call")
         self.followUpDialog = self.loadUIFile('Resources/UI/followUpDialog.ui')
         self.clipboard = qt.QApplication.clipboard()
         self.textEditor = self.followUpDialog.findChild("QTextEdit", "textEditor")
@@ -102,12 +110,13 @@ class DerivedImageQAWidget:
         self.layout.addStretch(1)
         ### TESTING ###
         if True:
-            print "Gui calling logic.onGetBatchFilesClicked()"
+            self.logging.debug("Gui calling logic.onGetBatchFilesClicked()")
             self.logic.onGetBatchFilesClicked()
         ### END ###
 
     def loadUIFile(self, fileName):
         """ Return the object defined in the Qt Designer file """
+        self.logging.debug("call")
         uiloader = qt.QUiLoader()
         qfile = qt.QFile(os.path.join(__slicer_module__, fileName))
         qfile.open(qt.QFile.ReadOnly)
@@ -117,6 +126,7 @@ class DerivedImageQAWidget:
             qfile.close()
 
     def reviewButtonFactory(self, image):
+        self.logging.debug("call")
         widget = self.loadUIFile('Resources/UI/reviewButtonsWidget.ui')
         # Set push button
         pushButton = widget.findChild("QPushButton", "imageButton")
@@ -134,6 +144,7 @@ class DerivedImageQAWidget:
         return widget
 
     def _formatText(self, text):
+        self.logging.debug("call")
         parsed = text.split("_")
         if len(parsed) > 1:
             text = " ".join([parsed[1].capitalize(), parsed[0]])
@@ -143,6 +154,7 @@ class DerivedImageQAWidget:
 
     def connectSessionButtons(self):
         """ Connect the session navigation buttons to their logic """
+        self.logging.debug("call")
         # TODO: Connect buttons
         ### self.nextButton.connect('clicked()', self.logic.onNextButtonClicked)
         ### self.previousButton.connect('clicked()', self.logic.onPreviousButtonClicked)
@@ -150,6 +162,7 @@ class DerivedImageQAWidget:
 
     def connectReviewButtons(self):
         """ Map the region buttons clicked() signals to the function """
+        self.logging.debug("call")
         self.buttonMapper = qt.QSignalMapper()
         self.buttonMapper.connect('mapped(const QString&)', self.logic.selectRegion)
         self.buttonMapper.connect('mapped(const QString&)', self.enableRadios)
@@ -160,6 +173,7 @@ class DerivedImageQAWidget:
 
     def enableRadios(self, image):
         """ Enable the radio buttons that match the given region name """
+        self.logging.debug("call")
         self.imageQAWidget.findChild("QWidget", image + "_radioWidget").setEnabled(True)
         for suffix in ("_good", "_bad", "_followUp"):
             radio = self.imageQAWidget.findChild("QRadioButton", image + suffix)
@@ -169,6 +183,7 @@ class DerivedImageQAWidget:
 
     def disableRadios(self, image):
         """ Disable all radio buttons that DO NOT match the given region name """
+        self.logging.debug("call")
         radios = self.imageQAWidget.findChildren("QRadioButton")
         for radio in radios:
             if radio.objectName.find(image) == -1:
@@ -177,12 +192,14 @@ class DerivedImageQAWidget:
 
     def resetRadioWidgets(self):
         """ Disable and reset all radio buttons in the widget """
+        self.logging.debug("call")
         radios = self.imageQAWidget.findChildren("QRadioButton")
         for radio in radios:
             radio.setCheckable(False)
             radio.setEnabled(False)
 
     def getRadioValues(self):
+        self.logging.debug("call")
         values = ()
         needsFollowUp = False
         radios = self.imageQAWidget.findChildren("QRadioButton")
@@ -210,9 +227,11 @@ class DerivedImageQAWidget:
         return values
 
     def resetWidget(self):
+        self.logging.debug("call")
         self.resetRadioWidgets()
 
     def grabNotes(self):
+        self.logging.debug("call")
         self.notes = None
         self.notes = str(self.textEditor.toPlainText())
         # TODO: Format notes
@@ -222,11 +241,12 @@ class DerivedImageQAWidget:
         self.textEditor.clear()
 
     def cancelNotes(self):
+        self.logging.debug("call")
         # TODO:
         pass
 
     def onGetBatchFilesClicked(self):
-        print "gui:onGetBatchFilesClicked()"
+        self.logging.debug("call")
         values = self.getRadioValues()
         if len(values) >= len(self.images + self.regions):
             self.logic.writeToDatabase(values)
@@ -234,11 +254,12 @@ class DerivedImageQAWidget:
             self.logic.onGetBatchFilesClicked()
         else:
             # TODO: Handle this case intelligently
-            print "Not enough values for the required columns!"
+            self.logging.warning("Not enough values for the required columns!")
 
 
     def exit(self):
         """ When Slicer exits, prompt user if they want to write the last evaluation """
+        self.logging.debug("call")
         values = self.getRadioValues()
         if len(values) >= len(self.images + self.regions):
             # TODO: Write a confirmation dialog popup

@@ -1,2 +1,32 @@
-[Results]
-directories=<comma-seperated directory list>
+[GUI]
+Section1=section1, section2
+
+
+[section1]
+widgets=button1, button2
+
+[button1]
+qtwidget=button
+factory = reviewButtonFactory
+input=file1
+
+[button2]
+qtwidget=button
+factory = reviewButtonFactory
+input=file2
+
+[section2]
+widgets=buttonA, buttonB
+
+[buttonA]
+qtwidget=button
+factory = reviewButtonFactory
+
+input=fileA
+
+[buttonB]
+qtwidget=button
+factory = reviewButtonFactory
+input=fileB
+
+[Logic]

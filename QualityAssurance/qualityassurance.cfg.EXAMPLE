@@ -1,3 +1,4 @@
+# Sections must be named "Module#" to be recognized
 [Module1]
 Name=MyFirstModule
 Module=module_config_file1
@@ -7,3 +8,8 @@ Database=database_config_file1
 Name=MySecondModule
 Module=module_config_file2
 Database=database_config_file2
+
+[Module3]
+Name=Derived Images
+Module=derived_images
+Database=sinapse_database

@@ -1,0 +1,39 @@
+#[SQLite]
+#[MySQL]
+[Postgres]
+# These are the required settings for the Postgres database server
+#
+# Address of host server
+Host=<host.psychiatry.uiowa.edu>
+# Default is 5432
+Port=5432
+# Name of postgres database
+Database=<Postgres database name>
+# Postgress user name
+User=<database user name>
+# Postgres user password
+Password=<database-only password>
+
+[Schema]
+Tables=[<table1>, <table2>, <table3>, <table4>]
+
+[table1]
+Type=<input|output|>
+Name=<table_name>
+Columns=[<column1>, <column2>, <column3>]
+PrimaryKey=columnX
+ForeignKey=<columnY>, <columnZ>
+
+[table2]
+Type=<input|output|>
+Name=<table_name>
+Columns=[<column1>, <column2>, <column3>]
+PrimaryKey=columnX
+ForeignKey=<columnY>, <columnZ>
+
+[table3]
+Type=<input|output|>
+Name=<table_name>
+Columns=[<column1>, <column2>, <column3>]
+PrimaryKey=columnX
+ForeignKey=<columnY>, <columnZ>

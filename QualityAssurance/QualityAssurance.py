@@ -10,14 +10,14 @@ from QALib import *
 class QualityAssurance:
     def __init__(self, parent):
         parent.title = "Quality Assurance" # TODO make this more human readable by adding spaces
-        parent.categories = ["Quality Assurance"]
-        parent.dependencies = ["Volumes"]
+        parent.categories = ["Utilitites"]
+        parent.dependencies = []
         parent.contributors = ["Dave Welch (UIowa), Hans Johnson (UIowa), Steve Pieper (Isomics)"]
         parent.helpText = """
         Configurable scripted Slicer module for quality assurance that loads INI-like files that define the module GUI and the output database
         """
         parent.acknowledgementText = """
-        This file was originally developed by Dave Welch and Hans Johnson, SINAPSE, University of Iowa and was partially funded by NIH grant 3P41RR013218-12S1.    Thanks to Steve Pieper, Isomics, Inc. for guidance and encouragement.
+        This file was originally developed by Dave Welch and Hans Johnson, SINAPSE, University of Iowa and was partially funded by NIH grant 3P41RR013218-12S1.    Thanks to Steve Pieper, Isomics, Inc. and Andrey Fedorov (BWH) for guidance and encouragement.
 """
         self.parent = parent
 
@@ -60,22 +60,6 @@ class QualityAssuranceWidget:
 
     def setup(self):
         self.logger.debug("Initial setup")
-        sm = ctk.ctkCollapsibleButton()
-        sm.text = "Avaliable Configurations"
-        self.layout.addWidget(sm)
-        ml = qt.QVBoxLayout(sm)
-
-        # Setup module selection buttons
-        self.moduleButtonMapper = qt.QSignalMapper()
-        self.moduleButtonMapper.connect('mapped(const QString&)', self.setupModuleGUI)
-        self.createModuleButtons(ml)
-
-        self.moduleWidget = ctk.ctkCollapsibleButton()
-        self.moduleWidget.name = "module_gui"
-        self.moduleWidget.text = "QA GUI"
-        self.layout.addWidget(self.moduleWidget)
-        # Instantiate and connect widgets ...
-
         #
         # Reload and Test area
         #
@@ -101,33 +85,23 @@ class QualityAssuranceWidget:
         reloadFormLayout.addWidget(self.reloadAndTestButton)
         self.reloadAndTestButton.connect('clicked()', self.onReloadAndTest)
 
-        #
-        # Volume Scrolling Area
-        #
-        scrollingCollapsibleButton = ctk.ctkCollapsibleButton()
-        scrollingCollapsibleButton.text = "Volume Scrolling"
-        self.layout.addWidget(scrollingCollapsibleButton)
-        # Layout within the scrolling collapsible button
-        scrollingFormLayout = qt.QFormLayout(scrollingCollapsibleButton)
+        # Module selection section
+        sm = ctk.ctkCollapsibleButton()
+        sm.text = "Avaliable Configurations"
+        self.layout.addWidget(sm)
+        ml = qt.QVBoxLayout(sm)
 
-        # volume selection scroller
-        self.slider = ctk.ctkSliderWidget()
-        self.slider.decimals = 0
-        self.slider.enabled = False
-        scrollingFormLayout.addRow("Volume", self.slider)
+        # Setup module selection buttons
+        self.moduleButtonMapper = qt.QSignalMapper()
+        self.moduleButtonMapper.connect('mapped(const QString&)', self.setupModuleGUI)
+        self.moduleButtonMapper.connect('mapped(const QString&)', self.onApplyButton)
+        self.createModuleButtons(ml)
 
-        # refresh button
-        # self.refreshButton = qt.QPushButton("Refresh")
-        # scrollingFormLayout.addRow(self.refreshButton)
-
-        # make connections
-        # self.slider.connect('valueChanged(double)', self.onSliderValueChanged)
-        # self.refreshButton.connect('clicked()', self.onRefresh)
-
-        # make an instance of the logic for use by the slots
-        # self.logic = VolumeScrollerLogic()
-        # call refresh the slider to set it's initial state
-        # self.onRefresh()
+        # Module gui section
+        self.moduleWidget = ctk.ctkCollapsibleButton()
+        self.moduleWidget.name = "module_gui"
+        self.moduleWidget.text = "QA GUI"
+        self.layout.addWidget(self.moduleWidget)
 
         # Add vertical spacer
         self.layout.addStretch(1)
@@ -148,19 +122,22 @@ class QualityAssuranceWidget:
     def setupModuleGUI(self, name):
         self.logger.debug("call")
         self.layout.removeWidget(self.moduleWidget)
+        self.moduleWidget.deleteLater()
+        self.moduleWidget.setParent(None)
         self.moduleWidget = eval("self.%s._getGUI()" % name) # Returns ctkCollapsibleButton widget
-        self.layout.insertWidget(1, self.moduleWidget)
+        self.layout.insertWidget(2, self.moduleWidget)  ### TODO: Change index when Reload section removed...
 
     def cleanup(self):
         pass
 
     def onSelect(self):
-        self.applyButton.enabled = self.inputSelector.currentNode() and self.outputSelector.currentNode()
+        pass
+        ### self.applyButton.enabled = self.inputSelector.currentNode() and self.outputSelector.currentNode()
 
-    def onApplyButton(self):
-        logic = QualityAssuranceLogic()
+    def onApplyButton(self, name):
+        exec "logic = QualityAssuranceLogic(self.logger, self.%s)" % name
         print("Run the algorithm")
-        logic.run(self.inputSelector.currentNode(), self.outputSelector.currentNode())
+        ### logic.run(self.inputSelector.currentNode(), self.outputSelector.currentNode())
 
     def onReload(self,moduleName="QualityAssurance"):
         """Generic reload method for any scripted module.
@@ -231,7 +208,59 @@ class QualityAssuranceLogic:
     this class and make use of the functionality without
     requiring an instance of the Widget
     """
-    def __init__(self):
+    def __init__(self, logger, module):
+        self.logger = logger
+        self.database = None
+        self.module = module
+
+    def _setDatabase(self):
+        self.database = QADatabase(self.module._database)
+
+    def executeQuery(self, query, inputs):
+        """
+
+        """
+        if self.module is None or self.database is None:
+            raise Exception()
+        return self.database.runGenericQuery(query, inputs)
+
+    def loadData(self, filename, kind="volume"):
+        assert os.path.exists(filename), "Filename is not found: %s" filename
+        loaders = [i for i in slicer.util.__dict__.keys() if i[:4].lower() == 'load']
+        kinds = [i[4:].lower() for i in loaders]
+        loader = None
+        for function in loaders:
+            loaderKind = function[4:].lower()
+            if kind.lower() == loaderKind:
+                self.logger.debug("Loading data via %s" % function)
+                exec "loader = slicer.util.%s" % function
+                break
+        if loader is None:
+            raise NotImplementedError
+        loader(filename)
+
+    def displayImageData(self, volumeNode):
+        pass
+
+    def saveImageData(self, volumeNode):
+        pass
+
+    def loadLabelMap(self, filename):
+        pass
+
+    def displayLabelMap(self, labelNode):
+        pass
+
+    def saveLabelMap(self, labelNode):
+        pass
+
+    def saveScreenShot(self):
+        pass
+
+    def saveScene(self):
+        pass # Save a .mrb file
+
+    def loadColorMap(self, filename):
         pass
 
     def hasImageData(self,volumeNode):
@@ -247,10 +276,11 @@ class QualityAssuranceLogic:
             return False
         return True
 
-    def run(self,inputVolume,outputVolume):
+    def run(self): ###, inputVolume, outputVolume):
         """
         Run the actual algorithm
         """
+        self._setDatabase()
         return True
 
 
@@ -308,7 +338,7 @@ class QualityAssuranceTest(unittest.TestCase):
                 ('http://slicer.kitware.com/midas3/download?items=5767', 'FA.nrrd', slicer.util.loadVolume),
                 )
 
-        for url,name,loader in downloads:
+        for url, name, loader in downloads:
             filePath = slicer.app.temporaryPath + '/' + name
             if not os.path.exists(filePath) or os.stat(filePath).st_size == 0:
                 print('Requesting download %s from %s...\n' % (name, url))

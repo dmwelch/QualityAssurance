@@ -1,6 +1,9 @@
 import os
 import unittest
+
 from __main__ import vtk, qt, ctk, slicer
+
+from Resources import *
 from QALib import *
 
 #
@@ -10,7 +13,7 @@ from QALib import *
 class QualityAssurance:
     def __init__(self, parent):
         parent.title = "Quality Assurance" # TODO make this more human readable by adding spaces
-        parent.categories = ["Utilitites"]
+        parent.categories = ["Utilites"]
         parent.dependencies = []
         parent.contributors = ["Dave Welch (UIowa), Hans Johnson (UIowa), Steve Pieper (Isomics)"]
         parent.helpText = """
@@ -37,11 +40,13 @@ class QualityAssurance:
 #
 # qQualityAssuranceWidget
 #
+configFile = os.path.join(os.path.dirname(slicer.modules.qualityassurance.path), "qualityassurance.cfg.EXAMPLE") # HACK
+
 
 class QualityAssuranceWidget:
-    def __init__(self, parent = None):
+    def __init__(self, parent=None, configFile=configFile):
         self.util = QAUtil()
-        self.util.CONFIG_FILE = os.path.join(os.path.dirname(slicer.modules.qualityassurance.path), "qualityassurance.cfg.EXAMPLE") # HACK
+        self.util.CONFIG_FILE = configFile
         self.logger = self.util.getLogger()
         for name in self.util.findModules():
             exec "self.{module} = QAModule(self.logger, '{module}')".format(module=name) in globals(), locals()
@@ -127,6 +132,18 @@ class QualityAssuranceWidget:
         self.moduleWidget = eval("self.%s._getGUI()" % name) # Returns ctkCollapsibleButton widget
         self.layout.insertWidget(2, self.moduleWidget)  ### TODO: Change index when Reload section removed...
 
+    def connectModuleWidgets(self):
+        # For widget in gui:
+        #    connectSignalToSlot(widget)
+        #    connectSignalToFunction(widget)
+        pass
+
+    def connectSignalToSlot(self, widget):
+        # section = widget.GetName()
+        # for option in self.parser.options(section)
+        # if self.parser.has_option(section, "signal")
+        pass
+
     def cleanup(self):
         pass
 
@@ -184,7 +201,7 @@ class QualityAssuranceWidget:
         globals()[widgetName.lower()].setup()
         setattr(globals()['slicer'].modules, widgetName, globals()[widgetName.lower()])
 
-    def onReloadAndTest(self,moduleName="QualityAssurance"):
+    def onReloadAndTest(self, moduleName="QualityAssurance"):
         try:
             self.onReload()
             evalString = 'globals()["%s"].%sTest()' % (moduleName, moduleName)
@@ -225,7 +242,7 @@ class QualityAssuranceLogic:
         return self.database.runGenericQuery(query, inputs)
 
     def loadData(self, filename, kind="volume"):
-        assert os.path.exists(filename), "Filename is not found: %s" filename
+        assert os.path.exists(filename), "Filename is not found: %s" % filename
         loaders = [i for i in slicer.util.__dict__.keys() if i[:4].lower() == 'load']
         kinds = [i[4:].lower() for i in loaders]
         loader = None
@@ -352,3 +369,45 @@ class QualityAssuranceTest(unittest.TestCase):
         logic = QualityAssuranceLogic()
         self.assertTrue( logic.hasImageData(volumeNode) )
         self.delayDisplay('Test passed!')
+
+    def qualityAssuranceTest2(self):
+        """
+        Test the top level config file for valid and invalid inputs
+        """
+        # Create a top level config file
+        import tempfile
+        from ConfigParser import SafeConfigParser as parser
+
+        topParser = parser()
+        section = "Module1"
+        topParser.add_section(section)
+        topParser.set(section, "Name", "Supercalafragalisticexpialidoshous")
+        topParser.set(section, "Module", "test1.ini")
+        topParser.set(section, "Database", "test1_schema.ini")
+        topParser.set(section, "Logic", "test1.py")
+
+        modParser = parser()
+        testDict = {"GUI":[("widget", "ctkCollapsibleButton"),
+                           ("name", "test1"),
+                           ("text", "Test1"),
+                           ("layout", "vertical"),
+                           ("children", "child1, child2, child3")],
+                    "child1":[("widget", "QFrame"),
+                              ("layout", "horizontal"),
+                              ("children", "child11, child12")],
+                    "child2":[("widget", "QFrame"),
+                              ("layout", "v"),
+                              ("children", "child21, child21, child12")],
+                    "child3":[]}
+
+        for section, options in testDict.items():
+            modParser.add_section(section)
+            for option, value in options:
+                modParser.set(option, value)
+
+
+        with tempfile.NamedTemporaryFile(delete=False) as temp:
+            topParser.write(temp)
+            filename = temp.name
+
+        widget = QualityAssuranceWidget(None, filename)

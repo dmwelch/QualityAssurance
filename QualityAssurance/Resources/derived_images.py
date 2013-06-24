@@ -7,6 +7,7 @@ def constructFilename():
     return dirs, recordID
 
 def onLoadPushButtonClicked():
+    # self.parser.get()
     recordID, dirs = constructFilename()
     volumeFiles = ['t1_average_BRAINSABC.nii.gz',
                    't2_average_BRAINSABC.nii.gz']
@@ -18,5 +19,11 @@ def onLoadPushButtonClicked():
 
 def loadData(dirs, base, files, kind):
     for filename in files:
-        filepath = os.path.join(*dirs, base, filename)
+        filepath = os.path.join(dirs, base, filename)
         self.loadData(filename, kind=kind)
+
+def printButton(name):
+    """
+    Test to print button names
+    """
+    print name

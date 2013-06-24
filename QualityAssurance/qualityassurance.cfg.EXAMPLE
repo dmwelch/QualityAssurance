@@ -1,15 +1,18 @@
 # Sections must be named "Module#" to be recognized
 [Module1]
 Name=MyFirstModule
-Module=module_config_file1
-Database=database_config_file1
+Module=module_config_file1.cfg
+Database=database_config_file1.cfg
+Logic = dummy.py
 
 [Module2]
 Name=MySecondModule
-Module=module_config_file2
-Database=database_config_file2
+Module=module_config_file2.cfg
+Database=database_config_file2.cfg
+Logic = dummy.py
 
 [Module3]
-Name=Derived Images
-Module=derived_images
-Database=sinapse_database
+Name = Derived Images
+Module = derived_images.cfg
+Database = derived_images_db.cfg
+Logic = derived_images.py

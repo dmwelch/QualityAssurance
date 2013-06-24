@@ -4,7 +4,11 @@ import os, keyring
 import slicer, ctk, qt
 from pg8000 import DBAPI as sql # Move to QADatabase._getDatabaseType()
 
+import Resources
 from QALib import *
+
+Resources.derived_images.printButton("THIS IS A TEST")
+
 
 class QAModule(object):
     """
@@ -25,22 +29,27 @@ class QAModule(object):
         self._name = self._getModuleName()
         self._module = self._getModuleFile()
         self._database = self._getDatabaseFile()
+        self.logic = self._getModuleLogic()
+        self.parents = None
 
     def _getDatabaseFile(self):
-        return self.parser.get(self._section, "Database") + ".cfg"
+        return self.parser.get(self._section, "Database")
 
     def _getModuleFile(self):
-        return self.parser.get(self._section, "Module") + ".cfg"
+        return self.parser.get(self._section, "Module")
 
     def _getModuleName(self):
         return self.parser.get(self._section, "Name")
+
+    def _getModuleLogic(self):
+        return self.parser.get(self._section, "Logic")
 
     def _getFullPath(self, filename):
         module = "QualityAssurance".lower()
         qaModuleDir = os.path.dirname(eval("slicer.modules.%s.path" % module))
         return os.path.join(qaModuleDir, filename)
 
-    def _getGUI(self):
+    def _getParents(self):
         """
 
         """
@@ -48,8 +57,22 @@ class QAModule(object):
         self.parser.read(self._getFullPath(self._module))
         # Create the new container
         self.logger.debug("Creating new widget...")
-        main = self.parseWidget("GUI")
-        return main
+        self.parents = []
+        for section in self.parser.sections():
+            if self.parser.has_option(section, "root") and self.parser.getboolean(section, "root"):
+                print "Appending to parents:", section
+                self.parents.append(self.parseWidget(section))
+        print "Parents:", self.parents
+
+    def _getGUI(self):
+        if self.parents is None:
+            self._getParents()
+        assert (not self.parents is None) and (len(self.parents) > 0), "Parents did not get set correctly!"
+        for parent in self.parents:
+            print "Parent.name:", parent.name
+            if parent.name == self.parser.get(self._section, "Module").split(".")[0]:  # ctkCollapsibleButton
+                print "Parent found:", parent.name
+                return parent
 
     def parseWidget(self, section, parent=None):
         # Construct the widget
@@ -63,8 +86,10 @@ class QAModule(object):
             # If widget is a leaf, return the parent layout
             assert not self.parser.has_option(section, "children"), \
                 "ConfigurationError: widget %s has children but no layout" % section
-            assert not parent is None, \
+            assert not parent is None or self.parser.has_option(section, "root"), \
                 "ConfigurationError: no parent and no layout for widget %s" % section
+            if parent is None:
+                return widget  # Case: root
             return parent
         else:
             # Run recursively...
@@ -90,10 +115,17 @@ class QAModule(object):
         # Set the additional parameters
         items = self.parser.items(section)
         for item, value in items:
-            if not item in ["widget", "layout", "children"]:
+            if not item in ["widget", "layout", "children", "root"]:
                 try:
                     exec("widget.%s = '%s'" % (item, value))
                 except Exception, e:
+                    try:  # signal to slot
+                        eval("widget.connect('%s()', Resources.%s.%s)" % (item, self.logic.strip(".py"), value))
+                    except Exception, e:
+                        print "widget.connect('%s()', Resources.%s.%s)" % (item, self.logic.strip(".py"), value)
+                        raise e  # For DEBUGGING
+                    ### print "widget.%s = '%s'" % (item, value)
+                    ### raise e  # For DEBUGGING
                     self.logger.error("-*" * 30)
                     self.logger.error("%s in %s raised exception!!!\n" % (section, item))
         self.logger.debug("Generated widget: %s" % widget)

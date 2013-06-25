@@ -44,7 +44,9 @@ configFile = os.path.join(os.path.dirname(slicer.modules.qualityassurance.path),
 
 
 class QualityAssuranceWidget:
+
     def __init__(self, parent=None, configFile=configFile):
+        from QALib.QAUtil import QAUtil
         self.util = QAUtil()
         self.util.CONFIG_FILE = configFile
         self.logger = self.util.getLogger()
@@ -332,7 +334,7 @@ class QualityAssuranceTest(unittest.TestCase):
         """Run as few or as many tests as needed here.
         """
         self.setUp()
-        self.test_QualityAssurance1()
+        self.test_QualityAssurance2()
 
     def test_QualityAssurance1(self):
         """ Ideally you should have several levels of tests.    At the lowest level
@@ -374,6 +376,8 @@ class QualityAssuranceTest(unittest.TestCase):
         """
         Test the top level config file for valid and invalid inputs
         """
+        # from QALib.QAUtil import QAUtil
+        # util = QAUtil()
         # Create a top level config file
         import tempfile
         from ConfigParser import SafeConfigParser as parser
@@ -396,9 +400,22 @@ class QualityAssuranceTest(unittest.TestCase):
                               ("layout", "horizontal"),
                               ("children", "child11, child12")],
                     "child2":[("widget", "QFrame"),
-                              ("layout", "v"),
+                              ("layout", "vertical"),
                               ("children", "child21, child21, child12")],
-                    "child3":[]}
+                    "child3":[("widget", "QPushButton"),
+                              ("text", "child3"),
+                              ("name", "child3"),
+                              ("clicked", "printButton('%(name)s')")],
+                    "child11":[("widget", "QPushButton"),
+                              ("text", "child11"),
+                              ("name", "child11"),
+                              ("clicked", "printButton('%(name)s')")],
+                    "child12":[("widget", "QFrame"),
+                              ("layout", "vertical"),
+                              ("children", "child3, child3, child3")],
+                    "child21":[("widget", "QFrame"),
+                              ("layout", "form"),
+                              ("children", "child3, child3, child3, child3")]}
 
         for section, options in testDict.items():
             modParser.add_section(section)

@@ -5,7 +5,7 @@ import slicer, ctk, qt
 from pg8000 import DBAPI as sql # Move to QADatabase._getDatabaseType()
 
 import Resources
-from QALib import *
+from QualityAssuranceLib import *
 
 Resources.derived_images.printButton("THIS IS A TEST")
 

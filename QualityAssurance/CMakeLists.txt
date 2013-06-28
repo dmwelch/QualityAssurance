@@ -4,6 +4,9 @@ set(MODULE_NAME QualityAssurance)
 #-----------------------------------------------------------------------------
 set(MODULE_PYTHON_SCRIPTS
   ${MODULE_NAME}.py
+  ${MODULE_NAME}Lib/__init__.py
+  ${MODULE_NAME}Lib/QAUtil.py
+  ${MODULE_NAME}Lib/QAModule.py
   )
 
 set(MODULE_PYTHON_RESOURCES
@@ -27,4 +30,3 @@ if(BUILD_TESTING)
   # Additional build-time testing
   add_subdirectory(Testing)
 endif()
-

@@ -4,7 +4,7 @@ import unittest
 from __main__ import vtk, qt, ctk, slicer
 
 from Resources import *
-from QALib import *
+from QualityAssuranceLib import *
 
 #
 # QualityAssurance
@@ -40,30 +40,35 @@ class QualityAssurance:
 #
 # qQualityAssuranceWidget
 #
-configFile = os.path.join(os.path.dirname(slicer.modules.qualityassurance.path), "qualityassurance.cfg.EXAMPLE") # HACK
 
 
 class QualityAssuranceWidget:
 
-    def __init__(self, parent=None, configFile=configFile):
-        from QALib.QAUtil import QAUtil
+    def __init__(self, parent=None, configFile=None):
         self.util = QAUtil()
+        if configFile is None:
+            configFile = os.path.join(os.path.dirname(slicer.modules.qualityassurance.path),
+                                      "qualityassurance.cfg.EXAMPLE")
+        else:
+            print "This is the config file:", configFile
         self.util.CONFIG_FILE = configFile
         self.logger = self.util.getLogger()
         for name in self.util.findModules():
+            print name
             exec "self.{module} = QAModule(self.logger, '{module}')".format(module=name) in globals(), locals()
-
         if parent is None:
+            self.logger.debug("Parent is None")
             self.parent = slicer.qMRMLWidget()
             self.parent.setLayout(qt.QVBoxLayout())
             self.parent.setMRMLScene(slicer.mrmlScene)
-        else:
-            self.parent = parent
-        self.layout = self.parent.layout()
-        if parent is None:
+            self.layout = self.parent.layout()
             self.setup()
-            self.createModuleButtons()
+            # self.createModuleButtons(self.parent)
             self.parent.show()
+        else:
+            self.logger.debug("Parent is: %s" % type(parent))
+            self.parent = parent
+            self.layout = self.parent.layout()
 
     def setup(self):
         self.logger.debug("Initial setup")
@@ -334,7 +339,8 @@ class QualityAssuranceTest(unittest.TestCase):
         """Run as few or as many tests as needed here.
         """
         self.setUp()
-        self.test_QualityAssurance2()
+        widget = QualityAssuranceWidget()
+        self.qualityAssuranceTest2(widget.parent)
 
     def test_QualityAssurance1(self):
         """ Ideally you should have several levels of tests.    At the lowest level
@@ -372,7 +378,7 @@ class QualityAssuranceTest(unittest.TestCase):
         self.assertTrue( logic.hasImageData(volumeNode) )
         self.delayDisplay('Test passed!')
 
-    def qualityAssuranceTest2(self):
+    def qualityAssuranceTest2(self, parent):
         """
         Test the top level config file for valid and invalid inputs
         """
@@ -381,15 +387,7 @@ class QualityAssuranceTest(unittest.TestCase):
         # Create a top level config file
         import tempfile
         from ConfigParser import SafeConfigParser as parser
-
-        topParser = parser()
-        section = "Module1"
-        topParser.add_section(section)
-        topParser.set(section, "Name", "Supercalafragalisticexpialidoshous")
-        topParser.set(section, "Module", "test1.ini")
-        topParser.set(section, "Database", "test1_schema.ini")
-        topParser.set(section, "Logic", "test1.py")
-
+        # Create the module file
         modParser = parser()
         testDict = {"GUI":[("widget", "ctkCollapsibleButton"),
                            ("name", "test1"),
@@ -416,15 +414,25 @@ class QualityAssuranceTest(unittest.TestCase):
                     "child21":[("widget", "QFrame"),
                               ("layout", "form"),
                               ("children", "child3, child3, child3, child3")]}
-
         for section, options in testDict.items():
             modParser.add_section(section)
             for option, value in options:
-                modParser.set(option, value)
-
-
-        with tempfile.NamedTemporaryFile(delete=False) as temp:
-            topParser.write(temp)
-            filename = temp.name
-
-        widget = QualityAssuranceWidget(None, filename)
+                modParser.set(section, option, value)
+        with tempfile.NamedTemporaryFile(delete=False) as modTemp:
+            modParser.write(modTemp)
+            modFile = modTemp.name
+        print modFile
+        # Create top file
+        topParser = parser()
+        section = "Module1"
+        topParser.add_section(section)
+        topParser.set(section, "Name", "Supercalafragalisticexpialidoshous")
+        topParser.set(section, "Module", modFile)
+        topParser.set(section, "Database", "test1_schema.ini")
+        topParser.set(section, "Logic", "test1.py")
+        with tempfile.NamedTemporaryFile(delete=False) as topTemp:
+            topParser.write(topTemp)
+            topFile = topTemp.name
+        print topFile
+        # Create the widget
+        widget = QualityAssuranceWidget(parent, topFile)

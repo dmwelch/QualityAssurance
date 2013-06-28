@@ -1,4 +1,4 @@
-SlicerDerivedImageEval
-======================
+QualityAssurance
+================
 
-Slicer extension module for image evaluation of derived images on the UIowa Psychiatry network
+Slicer extension module for image evaluation of using configuration files for GUI creation and module logic
